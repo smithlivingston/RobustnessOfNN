@@ -1,4 +1,3 @@
-from utiils.attacks.fgsm import adversarial
 import tensorflow as tf
 
 from tensorflow.python.keras import Sequential
@@ -8,12 +7,13 @@ from tensorflow.python.keras.layers import Conv2D, MaxPooling2D, Dropout, Dense,
 import numpy as np 
 import random
 
-import matplotlib.pyplot as mplot
+import matplotlib.pyplot as mplot 
 
 
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
 
 labels = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine']
+
 
 img_rows, img_cols, channels = 28, 28, 1
 num_classes = 10
@@ -29,7 +29,7 @@ y_test = tf.keras.utils.to_categorical(y_test, num_classes)
 
 print("Data shapes", x_test.shape, y_test.shape, x_train.shape, y_train.shape)
 
-def model_setup_fgsm():
+def setupModel():
     model = Sequential()
     model.add(Conv2D(32, kernel_size=(3, 3), strides=(3, 3), padding='same', activation='relu', input_shape=(img_rows, img_cols, channels)))
     model.add(Conv2D(64, kernel_size=(3, 3), strides=(3, 3), padding='same', activation='relu'))
@@ -46,21 +46,30 @@ def model_setup_fgsm():
     model.compile(optimizer='adam', loss='mse', metrics=['accuracy'])
     return model
 
-model = model_setup_fgsm()
+model = setupModel()
 model.fit(x_train, y_train,
           batch_size=32,
-          epochs=5,
+          epochs=4,
           validation_data=(x_test, y_test))
 
 print("Base accuracy on regular images:", model.evaluate(x=x_test, y=y_test, verbose=0))
 
+
+def adversarial_pattern(image, label):
+    image = tf.cast(image, tf.float32)
+    with tf.GradientTape() as tape:
+        tape.watch(image)
+        prediction = model(image)
+        loss = tf.keras.losses.MSE(label, prediction)
+    gradient = tape.gradient(loss, image)
+    signed_grad = tf.sign(gradient)
+    return signed_grad
+
 image = x_train[0]
 image_label = y_train[0]
-perturbations = adversarial(image.reshape((1, img_rows, img_cols, channels)), image_label, model).numpy()
-
+perturbations = adversarial_pattern(image.reshape((1, img_rows, img_cols, channels)), image_label).numpy()
 
 adversarial = image + perturbations * 0.1
-
 
 if channels == 1:
     mplot.imshow(adversarial.reshape((img_rows, img_cols)))

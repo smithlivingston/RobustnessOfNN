@@ -1,42 +1,18 @@
-from keras.models import Model, Sequential
-import tensorflow as tf 
+import tensorflow as tf
 
+import numpy as np 
+import random
 
-def fgsm(model, clean_image, epsilon, label):
-    modelPrediction = model(clean_image)
-    loss_object = tf.keras.losses.CategoricalCrossentropy()
+import matplotlib.pyplot as mplot 
 
-    targetLabel = tf.one_hot(label, modelPrediction.shape[-1])
-    targetLabel =  tf.reshape(targetLabel, (1, modelPrediction.shape[-1]))
-
-    # tensorImage =  tf.convert_to_tensor(clean_image)
-
+def adversarial(image, label, model): 
+    image = tf.cast(image, tf.float32)
     with tf.GradientTape() as tape:
-        tape.watch(clean_image)
-        prediction = model(clean_image)
-        loss = tf.keras.losses.SparseCategoricalCrossentropy()(prediction, tf.zeros_like(prediction))
-
-    gradient = tape.gradient(loss, clean_image)
-    signedgrad = tf.sign(gradient)
-    perturbed_image  = clean_image + epsilon * signedgrad
-    perturbed_image  = tf.clip_by_value(perturbed_image, 0, 1)  # Clip values to [0, 1]
-    return perturbed_image
-    # adversarialImage = clean_image + epsilon*perturbation
-    #untargeted
-    #  adversarial_image = clean_image - epsilon*perturbation
-
-
-def fgsm_attack(model, input_image, epsilon):
-
-    with tf.GradientTape() as tape:
-        tape.watch(input_image)
-        prediction = model(input_image)
-        predicted_labels = tf.argmax(prediction, axis=-1)
-        loss = tf.keras.losses.SparseCategoricalCrossentropy()(predicted_labels, tf.zeros_like(prediction))
-    gradient = tape.gradient(loss, input_image)
+        tape.watch(image)
+        prediction = model(image)
+        loss = tf.keras.losses.MSE(label, prediction)
+    gradient = tape.gradient(loss, image)
     signed_grad = tf.sign(gradient)
-    perturbed_image = input_image + epsilon * signed_grad
-    perturbed_image = tf.clip_by_value(perturbed_image, 0, 1)  # Clip values to [0, 1]
-    return perturbed_image
+    return signed_grad
 
 
